@@ -1,9 +1,13 @@
 {
-  "name": "operations-site",
+  "name": "operations-server",
   "version": "1.0.0",
   "type": "module",
   "main": "app.js",
   "scripts": {
     "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "body-parser": "^1.20.0"
   }
 }
