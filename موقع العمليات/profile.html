@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>الملف الشخصي</title>
+<link rel="stylesheet" href="style.css">
+<script type="module" src="auth-guard.js"></script>
+<script type="module" src="profile.js"></script>
+</head>
+
+<body class="profile-bg">
+
+<div class="profile-card small">
+
+  <h3>الملف الشخصي</h3>
+
+  <div class="info">
+    <span>📧</span>
+    <p id="email">loading...</p>
+  </div>
+
+  <div class="stats-row">
+    <div>
+      <small>قبول</small>
+      <strong id="accept">0</strong>
+    </div>
+    <div>
+      <small>رفض</small>
+      <strong id="reject">0</strong>
+    </div>
+    <div>
+      <small>نقاط</small>
+      <strong id="points">0</strong>
+    </div>
+  </div>
+
+  <button class="back-btn" onclick="goBack()">رجوع</button>
+
+</div>
+
+</body>
+</html>

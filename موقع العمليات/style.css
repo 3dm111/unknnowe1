@@ -1,0 +1,252 @@
+/* ===============================
+   RESET
+================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+  color: #111;
+  background-image: url('background.jpg'); /* ضع هنا صورتك الخلفية */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* login: center، dashboard: flex-start */
+  align-items: center;
+  padding: 20px 0;
+}
+
+/* ===============================
+   CARD LOGIN / DASHBOARD
+================================ */
+.card {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 25px 30px;
+  border-radius: 15px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.08);
+  text-align: center;
+  max-width: 400px; /* login */
+  width: 90%;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.12);
+}
+
+/* LOGO (login only) */
+.card .logo {
+  width: 80px;
+  margin-bottom: 15px;
+}
+
+/* TITLES */
+.card h2, .card h3 {
+  color: #2b7a0b; /* أخضر */
+  margin-bottom: 8px;
+}
+
+.card .subtitle, .card p {
+  color: #555;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* INPUTS LOGIN */
+.card input[type="email"],
+.card input[type="password"] {
+  width: 100%;
+  padding: 12px 15px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  font-size: 14px;
+  outline: none;
+  transition: border 0.3s, box-shadow 0.3s;
+}
+
+.card input[type="email"]:focus,
+.card input[type="password"]:focus {
+  border-color: #2b7a0b;
+  box-shadow: 0 0 8px rgba(43, 122, 11, 0.3);
+}
+
+/* BUTTONS */
+.card button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  background-color: #2b7a0b;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.card button:hover {
+  background-color: #1f5e07;
+}
+
+/* ERROR MESSAGE LOGIN */
+.error {
+  color: #d93025;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* ===============================
+   TOPBAR DASHBOARD
+================================ */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 90%;
+  max-width: 1000px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 15px 25px;
+  border-radius: 15px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.08);
+  margin-bottom: 30px;
+}
+
+.topbar strong {
+  color: #2b7a0b;
+}
+
+.topbar small {
+  color: #555;
+}
+
+.topbar button {
+  padding: 10px 20px;
+  background-color: #2b7a0b;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.topbar button:hover {
+  background-color: #1f5e07;
+}
+
+/* ===============================
+   GRID DASHBOARD
+================================ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  width: 90%;
+  max-width: 1000px;
+}
+
+/* FOOTER */
+.footer {
+  text-align: center;
+  padding: 15px;
+  color: #555;
+  font-size: 14px;
+  margin-top: 40px;
+}
+
+/* ===============================
+   RESPONSIVE
+================================ */
+@media (max-width: 768px) {
+  .topbar {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .card {
+    max-width: 95%;
+    padding: 20px;
+  }
+
+  .card .logo {
+    width: 60px;
+  }
+
+  .card input[type="email"],
+  .card input[type="password"] {
+    padding: 10px;
+  }
+
+  .card button {
+    padding: 10px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding: 15px;
+}
+
+.violation-card {
+  width: 280px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.1);
+  padding: 10px;
+}
+
+.violation-card img {
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.violation-card .title {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.violation-card .actions {
+  display: flex;
+  gap: 8px;
+}
+
+.violation-card button {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.accept {
+  background: #2ecc71;
+  color: white;
+}
+
+.reject {
+  background: #e74c3c;
+  color: white;
+}

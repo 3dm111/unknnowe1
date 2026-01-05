@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>لوحة التحكم - SZ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- حماية الدخول -->
+  <script type="module" src="auth-guard.js"></script>
+
+  <!-- سكربت الداشبورد -->
+  <script type="module" src="dashboard.js"></script>
+</head>
+
+<body>
+
+<div class="topbar">
+  <div>
+    <strong>مركز العمليات – SZ</strong><br>
+    <small>لوحة التحكم</small>
+  </div>
+  <button id="logoutBtn">تسجيل خروج</button>
+</div>
+
+<div class="grid">
+
+  <!-- كرت المخالفات -->
+  <div class="card">
+    <h3>لوحة المخالفات</h3>
+    <p>استعراض – قبول – رفض المخالفات</p>
+    <button onclick="goViolations()">دخول</button>
+  </div>
+
+  <!-- كرت الملف الشخصي -->
+  <div class="card">
+    <h3>الملف الشخصي</h3>
+    <p>عرض بيانات الحساب والإحصائيات</p>
+    <button onclick="goProfile()">دخول</button>
+  </div>
+
+</div>
+
+<footer class="footer">
+  من تطوير استديو الزهراني
+</footer>
+
+</body>
+</html>
