@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(bodyParser.json({ limit: "20mb" }));
+app.use(bodyParser.json({ limit: "5120mb" }));
 app.use(express.static(__dirname)); // يسمح بعرض HTML/CSS/JS
 
 // ===============================
