@@ -4,7 +4,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const app = express();
-const PORT = 3000;
+
+/* ✅ Render لازم يستخدم PORT من البيئة */
+const PORT = process.env.PORT || 3000;
 
 // ===============================
 // إعدادات أساسية
@@ -27,7 +29,7 @@ app.post("/api/violation/send", (req, res) => {
   const { playerId, violation, imageBase64 } = req.body;
 
   if (!playerId || !violation) {
-    return res.status(400).json({ success: false });
+    return res.status(400).json({ success: false, message: "بيانات ناقصة" });
   }
 
   violations.push({
@@ -35,7 +37,8 @@ app.post("/api/violation/send", (req, res) => {
     playerId,
     violation,
     imageBase64,
-    status: "pending"
+    status: "pending",
+    createdAt: new Date()
   });
 
   console.log("🚨 مخالفة جديدة:", violation);
@@ -88,7 +91,6 @@ app.get("/violations", (req, res) => {
 // تشغيل السيرفر
 // ===============================
 app.listen(PORT, () => {
-  console.log(`✅ Server running:
-http://192.168.100.8:${PORT}/dashboard
-http://192.168.100.8:${PORT}/violations`);
+  console.log("✅ Server running");
+  console.log(`🌍 PORT: ${PORT}`);
 });
