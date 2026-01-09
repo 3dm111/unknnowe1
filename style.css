@@ -150,7 +150,7 @@ body {
 /* الصورة الافتراضية */
 .violation-card img {
   width: 100%;
-  height: 200px;
+  height: 300px;
   object-fit: contain;
   transform: rotate(90deg);        /* يعالج انقلاب اليسار */
   transform-origin: center center;
