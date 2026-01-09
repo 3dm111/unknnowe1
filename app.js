@@ -4,27 +4,31 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const app = express();
-
-/* ✅ Render لازم يستخدم PORT من البيئة */
 const PORT = process.env.PORT || 3000;
 
-// ===============================
-// إعدادات أساسية
-// ===============================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(bodyParser.json({ limit: "5120mb" }));
-app.use(express.static(__dirname)); // يسمح بعرض HTML/CSS/JS
+/* ✅ CORS + OPTIONS */
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
 
-// ===============================
-// تخزين مؤقت (بدون قاعدة بيانات)
-// ===============================
+/* ✅ Body parsing */
+app.use(bodyParser.json({ limit: "50mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
+
+/* ✅ Static site */
+app.use(express.static(__dirname));
+
+/* ✅ Storage (RAM) */
 let violations = [];
 
-// ===============================
-// Unity ➜ إرسال مخالفة
-// ===============================
+/* إرسال مخالفة */
 app.post("/api/violation/send", (req, res) => {
   const { playerId, violation, imageBase64 } = req.body;
 
@@ -32,53 +36,63 @@ app.post("/api/violation/send", (req, res) => {
     return res.status(400).json({ success: false, message: "بيانات ناقصة" });
   }
 
-  violations.push({
+  const item = {
     id: Date.now(),
     playerId,
     violation,
-    imageBase64,
+    imageBase64: imageBase64 || "",
     status: "pending",
     createdAt: new Date()
-  });
+  };
 
-  console.log("🚨 مخالفة جديدة:", violation);
-  res.json({ success: true });
+  violations.push(item);
+
+  console.log("🚨 SEND =>", { id: item.id, playerId, violation, imgLen: item.imageBase64.length });
+  res.json({ success: true, id: item.id });
 });
 
-// ===============================
-// جلب جميع المخالفات للموقع
-// ===============================
+/* جلب المخالفات */
 app.get("/api/violations", (req, res) => {
   res.json(violations);
 });
 
-// ===============================
-// قبول مخالفة
-// ===============================
+/* ✅ قبول */
 app.post("/api/violation/accept", (req, res) => {
-  const { id } = req.body;
+  const id = Number(req.body.id);
+
+  console.log("✅ ACCEPT req =>", { id, type: typeof req.body.id, total: violations.length });
 
   const v = violations.find(x => x.id === id);
-  if (v) v.status = "accepted";
+  if (!v) {
+    console.log("❌ ACCEPT not found =>", id);
+    return res.status(404).json({ success: false, message: "مخالفة غير موجودة" });
+  }
 
-  res.json({ result: "accepted", points: 5 });
+  v.status = "accepted";
+  console.log("✅ ACCEPT ok =>", { id: v.id, status: v.status });
+
+  res.json({ success: true, result: "accepted", points: 5 });
 });
 
-// ===============================
-// رفض مخالفة
-// ===============================
+/* ✅ رفض */
 app.post("/api/violation/reject", (req, res) => {
-  const { id } = req.body;
+  const id = Number(req.body.id);
+
+  console.log("⛔ REJECT req =>", { id, type: typeof req.body.id, total: violations.length });
 
   const v = violations.find(x => x.id === id);
-  if (v) v.status = "rejected";
+  if (!v) {
+    console.log("❌ REJECT not found =>", id);
+    return res.status(404).json({ success: false, message: "مخالفة غير موجودة" });
+  }
 
-  res.json({ result: "rejected", points: -5 });
+  v.status = "rejected";
+  console.log("⛔ REJECT ok =>", { id: v.id, status: v.status });
+
+  res.json({ success: true, result: "rejected", points: -5 });
 });
 
-// ===============================
-// صفحات الموقع
-// ===============================
+/* صفحات */
 app.get("/dashboard", (req, res) => {
   res.sendFile(path.join(__dirname, "dashboard.html"));
 });
@@ -87,10 +101,7 @@ app.get("/violations", (req, res) => {
   res.sendFile(path.join(__dirname, "violations.html"));
 });
 
-// ===============================
-// تشغيل السيرفر
-// ===============================
 app.listen(PORT, () => {
   console.log("✅ Server running");
-  console.log(`🌍 PORT: ${PORT}`);
+  console.log("🌍 PORT:", PORT);
 });
