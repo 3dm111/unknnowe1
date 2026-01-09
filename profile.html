@@ -1,40 +1,39 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-<meta charset="UTF-8">
-<title>الملف الشخصي</title>
-<link rel="stylesheet" href="style.css">
-<script type="module" src="auth-guard.js"></script>
-<script type="module" src="profile.js"></script>
+  <meta charset="UTF-8">
+  <title>الملف الشخصي</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="profile.js"></script>
 </head>
 
-<body class="profile-bg">
+<body>
 
-<div class="profile-card small">
+<div class="profile-card">
 
-  <h3>الملف الشخصي</h3>
-
-  <div class="info">
-    <span>📧</span>
-    <p id="email">loading...</p>
+  <div class="profile-header">
+    <div class="avatar">SZ</div>
+    <h2>الملف الشخصي</h2>
+    <p id="email" class="email">user@email.com</p>
   </div>
 
-  <div class="stats-row">
-    <div>
+  <div class="stats">
+    <div class="stat">
+      <span id="accept">0</span>
       <small>قبول</small>
-      <strong id="accept">0</strong>
     </div>
-    <div>
+    <div class="stat">
+      <span id="reject">0</span>
       <small>رفض</small>
-      <strong id="reject">0</strong>
     </div>
-    <div>
+    <div class="stat">
+      <span id="points">0</span>
       <small>نقاط</small>
-      <strong id="points">0</strong>
     </div>
   </div>
 
-  <button class="back-btn" onclick="goBack()">رجوع</button>
+  <button id="backBtn" class="back-btn">رجوع</button>
 
 </div>
 
