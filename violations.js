@@ -27,6 +27,13 @@ document.addEventListener("DOMContentLoaded", () => {
           img.style.display = "none";
         }
 
+        // ⭐ هنا نقرر هل هي عمودية ونضيف كلاس portrait
+        img.onload = () => {
+          if (img.naturalHeight > img.naturalWidth) {
+            img.classList.add("portrait");
+          }
+        };
+
         const title = document.createElement("h3");
         title.textContent = v.violation || "مخالفة بدون اسم";
 
@@ -62,9 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function updateStatus(id, type) {
   fetch(`/api/violation/${type}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id })
   })
     .then(res => {
