@@ -149,7 +149,7 @@ body {
 
 /* الصورة الافتراضية */
 .violation-card img {
-  width: 100%;
+  width: 60%;
   height: 350px;
   object-fit: contain;
   transform: rotate(90deg);        /* يعالج انقلاب اليسار */
