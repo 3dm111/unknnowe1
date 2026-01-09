@@ -27,12 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
           img.style.display = "none";
         }
 
-        // ⭐ هنا نقرر هل هي عمودية ونضيف كلاس portrait
-        img.onload = () => {
-          if (img.naturalHeight > img.naturalWidth) {
-            img.classList.add("portrait");
-          }
-        };
+     img.onload = null;
 
         const title = document.createElement("h3");
         title.textContent = v.violation || "مخالفة بدون اسم";
