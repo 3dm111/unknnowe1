@@ -1,56 +1,37 @@
-document.addEventListener("DOMContentLoaded", () => {
+import { auth, db } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-  const container = document.getElementById("violations");
-  const backBtn = document.getElementById("backBtn");
+const emailEl = document.getElementById("email");
+const acceptEl = document.getElementById("accept");
+const rejectEl = document.getElementById("reject");
+const pointsEl = document.getElementById("points");
+const backBtn = document.getElementById("backBtn");
 
-  /* زر الرجوع */
-  backBtn.addEventListener("click", () => {
-    window.location.href = "dashboard.html";
-  });
+onAuthStateChanged(auth, async (user) => {
 
-  /* تحميل المخالفات */
-  async function loadViolations() {
-    try {
-      const res = await fetch("/api/violations");
-      const data = await res.json();
-
-      container.innerHTML = "";
-
-      data.forEach(v => {
-        const card = document.createElement("div");
-        card.className = "violation-card";
-
-        card.innerHTML = `
-          <img src="data:image/png;base64,${v.imageBase64}" />
-          <h3>${v.violation}</h3>
-
-          <div class="actions">
-            <button class="accept">قبول</button>
-            <button class="reject">رفض</button>
-          </div>
-        `;
-
-        card.querySelector(".accept").onclick = () =>
-          handleDecision(v.id, "accept");
-
-        card.querySelector(".reject").onclick = () =>
-          handleDecision(v.id, "reject");
-
-        container.appendChild(card);
-      });
-
-    } catch (err) {
-      console.error("فشل تحميل المخالفات", err);
-      container.innerHTML = "<p>تعذر تحميل المخالفات</p>";
-    }
+  // ❌ لو مو مسجل دخول
+  if (!user) {
+    window.location.href = "index.html"; // ✔️ مو login.html
+    return;
   }
 
-  async function handleDecision(id, type) {
-    await fetch(`/api/violation/${type}/${id}`, {
-      method: "POST"
-    });
-    loadViolations();
-  }
+  // ✅ عرض الإيميل
+  emailEl.textContent = user.email;
 
-  loadViolations();
+  // ✅ جلب بيانات المستخدم
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+
+  if (snap.exists()) {
+    const data = snap.data();
+    acceptEl.textContent = data.acceptCount ?? 0;
+    rejectEl.textContent = data.rejectCount ?? 0;
+    pointsEl.textContent = data.points ?? 0;
+  }
+});
+
+// زر الرجوع
+backBtn.addEventListener("click", () => {
+  window.location.href = "dashboard.html";
 });
