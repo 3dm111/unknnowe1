@@ -156,7 +156,7 @@ body {
 
 /* ⭐ إذا الصورة عمودية نخليها أفقية */
 .violation-card img.portrait {
-  transform: rotate(0deg) scale(1.25);
+  transform: rotate(120deg) scale(1.25);
   transform-origin: center center;
 }
 
