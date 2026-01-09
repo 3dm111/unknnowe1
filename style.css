@@ -146,21 +146,20 @@ body {
   box-shadow: 0 15px 40px rgba(0,0,0,0.12);
   overflow: hidden;
 }
+
 /* الصورة الافتراضية */
 .violation-card img {
   width: 100%;
-  height: 180px;
-  object-fit: cover;
-  transform: rotate(90deg) scale(1.25);
-  transform-origin: center center;
+  height: 380px;          /* خليها أطول عشان العمودي يبان */
+  object-fit: contain;    /* أهم شي: يعرضها كاملة بدون قص */
+  background: rgba(0,0,0,0.04);
 }
 
-
-/* ⭐ إذا الصورة عمودية نخليها أفقية */
+/* احذف أي rotate كان موجود */
 .violation-card img.portrait {
-  transform: rotate(120deg) scale(1.25);
-  transform-origin: center center;
+  transform: none;
 }
+
 
 .violation-card h3 {
   padding: 15px;
