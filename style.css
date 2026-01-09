@@ -154,7 +154,7 @@ body {
   object-fit: contain;
   background-color: #f3f3f3;
 
-  transform: rotate(-90deg);
+  transform: rotate(90deg);
   transform-origin: center center;
 
   display: block;
