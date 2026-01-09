@@ -88,7 +88,7 @@ async function loadViolations(container, adminUid) {
 async function updateStatus(id, type, adminUid) {
   try {
     // 1) تحديث حالة المخالفة في السيرفر
-    const res = await fetch(`/api/violation/${type}`, {
+    const res = await fetch(`https://unknnowe1.onrender.com/api/violation/${type}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id })
