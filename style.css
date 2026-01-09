@@ -449,3 +449,72 @@ body {
     font-size: 13px;
   }
 }
+
+body {
+  margin: 0;
+  font-family: Arial;
+  background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  color: #fff;
+}
+
+.profile-card {
+  background: rgba(0,0,0,.55);
+  padding: 25px;
+  border-radius: 15px;
+  width: 320px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0,0,0,.6);
+}
+
+.profile-header .avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #00c6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 24px;
+  margin: 0 auto 10px;
+}
+
+.email {
+  font-size: 14px;
+  opacity: .8;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px 0;
+}
+
+.stat span {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.stat small {
+  display: block;
+  opacity: .7;
+}
+
+.back-btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: #ff9800;
+  color: #000;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.back-btn:hover {
+  background: #ffc107;
+}
