@@ -1,44 +1,42 @@
-import { auth } from "./firebase.js";
-import { onAuthStateChanged, signOut } from
-  "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { auth, db } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", () => {
+  const emailEl  = document.getElementById("email");
+  const acceptEl = document.getElementById("accept");
+  const rejectEl = document.getElementById("reject");
+  const pointsEl = document.getElementById("points");
+  const backBtn  = document.getElementById("backBtn");
 
-  // عناصر الصفحة (نفس IDs الموجودة عندك)
-  const emailEl   = document.getElementById("email");
-  const avatarEl  = document.querySelector(".avatar");
-  const acceptEl  = document.getElementById("accept");
-  const rejectEl  = document.getElementById("reject");
-  const pointsEl  = document.getElementById("points");
-  const backBtn   = document.getElementById("backBtn");
-
-  // تحقق من تسجيل الدخول
-  onAuthStateChanged(auth, user => {
+  onAuthStateChanged(auth, async (user) => {
     if (!user) {
-      // لو مو مسجل دخول
       window.location.href = "index.html";
       return;
     }
 
-    // الإيميل
-    if (emailEl)
-      emailEl.textContent = user.email;
+    if (emailEl) emailEl.textContent = user.email;
 
-    // أول حرف من الإيميل للأفاتار
-    if (avatarEl)
-      avatarEl.textContent = user.email.charAt(0).toUpperCase();
+    const ref = doc(db, "admins", user.uid);
+    const snap = await getDoc(ref);
 
-    // قيم افتراضية (تقدر تربطها من السيرفر لاحقًا)
-    if (acceptEl) acceptEl.textContent = "0";
-    if (rejectEl) rejectEl.textContent = "0";
-    if (pointsEl) pointsEl.textContent = "0";
+    if (!snap.exists()) {
+      await setDoc(ref, { accept: 0, reject: 0, points: 0 });
+      if (acceptEl) acceptEl.textContent = "0";
+      if (rejectEl) rejectEl.textContent = "0";
+      if (pointsEl) pointsEl.textContent = "0";
+      return;
+    }
+
+    const d = snap.data();
+    if (acceptEl) acceptEl.textContent = String(d.accept ?? 0);
+    if (rejectEl) rejectEl.textContent = String(d.reject ?? 0);
+    if (pointsEl) pointsEl.textContent = String(d.points ?? 0);
   });
 
-  // زر الرجوع
   if (backBtn) {
     backBtn.addEventListener("click", () => {
       window.location.href = "dashboard.html";
     });
   }
-
 });
