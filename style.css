@@ -154,23 +154,12 @@ body {
   object-fit: contain;
   background-color: #f3f3f3;
 
-  transform: rotate(90deg);
+  transform: rotate(-90deg);
   transform-origin: center center;
 
   display: block;
 }
 
-/* حاوية الصورة */
-.violation-card {
-  overflow: hidden;
-}
-
-/* مساحة مخصصة للصورة فقط */
-.violation-card::before {
-  content: "";
-  display: block;
-  height: 360px;   /* ⬅️ هذه هي المساحة القصوى للصورة */
-}
 
 
 /* احذف أي rotate كان موجود */
