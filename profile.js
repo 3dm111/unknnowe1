@@ -1,52 +1,89 @@
-import { auth, db } from "./firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
 document.addEventListener("DOMContentLoaded", () => {
-
-  const emailEl = document.getElementById("email");
-  const acceptEl = document.getElementById("accept");
-  const rejectEl = document.getElementById("reject");
-  const pointsEl = document.getElementById("points");
-  const backBtn = document.getElementById("backBtn");
-
-  // تأكيد إن العناصر موجودة
-  if (!emailEl || !backBtn) {
-    console.error("❌ عناصر HTML غير موجودة");
+  const container = document.getElementById("violations");
+  if (!container) {
+    console.error("❌ عنصر violations غير موجود في الصفحة");
     return;
   }
 
-  onAuthStateChanged(auth, async (user) => {
+  loadViolations(container);
+});
 
-    // ❌ لو مو مسجل دخول
-    if (!user) {
-      window.location.href = "index.html";
+async function loadViolations(container) {
+  try {
+    const res = await fetch("/api/violations");
+    const data = await res.json();
+
+    container.innerHTML = "";
+
+    if (!data || data.length === 0) {
+      container.innerHTML = "<p>لا توجد مخالفات</p>";
       return;
     }
 
-    // ✅ عرض الإيميل
-    emailEl.textContent = user.email;
+    data.forEach(v => {
+      const card = document.createElement("div");
+      card.className = "violation-card";
+      card.dataset.id = v.id;
 
-    // ✅ جلب بيانات المستخدم
-    const userRef = doc(db, "users", user.uid);
-    const snap = await getDoc(userRef);
+      const img = document.createElement("img");
+      if (v.imageBase64 && v.imageBase64.length > 0) {
+        img.src = `data:image/png;base64,${v.imageBase64}`;
+      } else {
+        img.style.display = "none";
+      }
 
-    if (snap.exists()) {
-      const data = snap.data();
-      acceptEl.textContent = data.acceptCount ?? 0;
-      rejectEl.textContent = data.rejectCount ?? 0;
-      pointsEl.textContent = data.points ?? 0;
-    } else {
-      // لو ما فيه بيانات
-      acceptEl.textContent = 0;
-      rejectEl.textContent = 0;
-      pointsEl.textContent = 0;
-    }
-  });
+      const title = document.createElement("h3");
+      title.textContent = v.violation || "مخالفة بدون اسم";
 
-  // ✅ زر الرجوع
-  backBtn.addEventListener("click", () => {
-    window.location.href = "dashboard.html";
-  });
+      const actions = document.createElement("div");
+      actions.className = "actions";
 
-});
+      const acceptBtn = document.createElement("button");
+      acceptBtn.className = "accept";
+      acceptBtn.textContent = "قبول";
+      acceptBtn.onclick = () => updateStatus(v.id, "accept");
+
+      const rejectBtn = document.createElement("button");
+      rejectBtn.className = "reject";
+      rejectBtn.textContent = "رفض";
+      rejectBtn.onclick = () => updateStatus(v.id, "reject");
+
+      actions.appendChild(acceptBtn);
+      actions.appendChild(rejectBtn);
+
+      card.appendChild(img);
+      card.appendChild(title);
+      card.appendChild(actions);
+
+      container.appendChild(card);
+    });
+  } catch (err) {
+    console.error("❌ خطأ في جلب المخالفات:", err);
+    container.innerHTML = "<p>فشل تحميل المخالفات</p>";
+  }
+}
+
+async function updateStatus(id, type) {
+  try {
+    // إذا تستخدم Firebase Auth في الصفحة:
+    const user = window.auth?.currentUser; // حسب اسم auth عندك
+    const token = user ? await user.getIdToken() : null;
+
+    const res = await fetch(`/api/violation/${type}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ id })
+    });
+
+    if (!res.ok) throw new Error("فشل التحديث");
+
+    // احذف البطاقة بدون ريفرش
+    const card = document.querySelector(`.violation-card[data-id="${id}"]`);
+    if (card) card.remove();
+  } catch (err) {
+    console.error("❌ خطأ في تحديث المخالفة:", err);
+  }
+}
