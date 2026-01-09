@@ -140,6 +140,7 @@ body {
   max-width: 1100px;
 }
 
+/* الكارد */
 .violation-card {
   background: rgba(255,255,255,0.96);
   border-radius: 18px;
@@ -147,20 +148,10 @@ body {
   overflow: hidden;
 }
 
-/* منطقة الصورة (90 ثابت + ما يتعدى الأزرار) */
-.violation-card { overflow: hidden; }
-
-/* حجز مساحة للصورة فقط */
-.violation-card::before {
-  content: "";
-  display: block;
-  height: 300px;   /* غيّرها لو تبي، بس خله نفس رقم img */
-}
-
-/* الصورة داخل نفس المساحة + 90 ثابت */
+/* الصورة — فوق الأزرار مباشرة */
 .violation-card img {
   width: 100%;
-  height: 300px;   /* نفس رقم ::before */
+  height: 300px;          /* سقف واضح للصورة */
   object-fit: contain;
   background-color: #f3f3f3;
 
@@ -168,7 +159,7 @@ body {
   transform-origin: center center;
 
   display: block;
-  margin: 0 auto;
+  margin: 0;
 }
 
 /* لا تلغي الدوران */
