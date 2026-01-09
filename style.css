@@ -147,12 +147,11 @@ body {
   overflow: hidden;
 }
 
+/* الصورة الافتراضية */
 .violation-card img {
   width: 100%;
   height: 180px;
   object-fit: cover;
-  transform: rotate(90deg);
-  transform-origin: center center;
 }
 
 /* ⭐ إذا الصورة عمودية نخليها أفقية */
