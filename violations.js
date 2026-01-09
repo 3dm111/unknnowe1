@@ -75,3 +75,10 @@ function updateStatus(id, type) {
       console.error("❌ خطأ في تحديث المخالفة:", err);
     });
 }
+document.addEventListener("DOMContentLoaded", () => {
+  const container = document.getElementById("violations");
+
+  if (!container) {
+    console.error("❌ عنصر violations غير موجود في الصفحة");
+    return;
+  }
