@@ -4,9 +4,9 @@ import { doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.1
 
 document.addEventListener("DOMContentLoaded", () => {
   const emailEl  = document.getElementById("email");
-  const acceptEl = document.getElementById("acceptCount");
-  const rejectEl = document.getElementById("rejectCount");
-  const pointsEl = document.getElementById("points");
+  const acceptEl = document.getElementById("accept");  // ✅ مطابق للـ HTML
+  const rejectEl = document.getElementById("reject");  // ✅ مطابق للـ HTML
+  const pointsEl = document.getElementById("points");  // ✅ مطابق للـ HTML
   const backBtn  = document.getElementById("backBtn");
 
   onAuthStateChanged(auth, async (user) => {
@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (emailEl) emailEl.textContent = user.email;
 
-    // ✅ users بدل admins
+    // ✅ نخزن ونقرأ من users
     const ref = doc(db, "users", user.uid);
 
     // ✅ ضمان وجود الحقول (merge)
