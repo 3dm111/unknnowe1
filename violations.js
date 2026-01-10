@@ -30,13 +30,13 @@ async function loadViolations(container) {
       headers: { Authorization: `Bearer ${ID_TOKEN}` },
     });
 
+    const text = await res.text();
     if (!res.ok) {
-      const t = await res.text();
-      container.innerHTML = `<p>فشل تحميل المخالفات: ${t}</p>`;
+      container.innerHTML = `<p>فشل تحميل المخالفات: ${text}</p>`;
       return;
     }
 
-    const data = await res.json();
+    const data = JSON.parse(text);
     container.innerHTML = "";
 
     if (!data || data.length === 0) {
@@ -49,12 +49,9 @@ async function loadViolations(container) {
       card.className = "violation-card";
 
       const img = document.createElement("img");
-      const base64 = v.imageBase64 || v.image || "";
-      if (base64 && base64.length > 0) {
-        img.src = `data:image/png;base64,${base64}`;
-      } else {
-        img.style.display = "none";
-      }
+      const base64 = v.imageBase64 || "";
+      if (base64.length > 0) img.src = `data:image/png;base64,${base64}`;
+      else img.style.display = "none";
 
       const title = document.createElement("h3");
       title.textContent = v.violation || "مخالفة بدون اسم";
@@ -92,8 +89,7 @@ async function updateStatus(id, type) {
     if (!ID_TOKEN) return alert("التوكن غير جاهز");
     if (!id) return alert("ID المخالفة فاضي");
 
-    const url = `${API_BASE}/api/violation/${type}`;
-    const res = await fetch(url, {
+    const res = await fetch(`${API_BASE}/api/violation/${type}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -103,13 +99,9 @@ async function updateStatus(id, type) {
     });
 
     const text = await res.text();
-    console.log("STATUS:", res.status);
-    console.log("RESPONSE:", text);
+    console.log("STATUS:", res.status, "RESP:", text);
 
-    if (!res.ok) {
-      alert("فشل: " + text);
-      return;
-    }
+    if (!res.ok) return alert("فشل: " + text);
 
     location.reload();
   } catch (err) {

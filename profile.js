@@ -20,15 +20,14 @@ document.addEventListener("DOMContentLoaded", () => {
     // ✅ users بدل admins
     const ref = doc(db, "users", user.uid);
 
-    // ✅ أنشئ الوثيقة مرة واحدة لو ما كانت موجودة
-    await setDoc(ref, {
-      email: user.email,
-      accept: 0,
-      reject: 0,
-      points: 0
-    }, { merge: true });
+    // ✅ ضمان وجود الحقول (merge)
+    await setDoc(
+      ref,
+      { email: user.email, accept: 0, reject: 0, points: 0 },
+      { merge: true }
+    );
 
-    // ✅ قراءة لحظية + طباعة للتأكد
+    // ✅ قراءة لحظية
     onSnapshot(ref, (snap) => {
       const d = snap.data() || {};
       console.log("USER DOC:", d);

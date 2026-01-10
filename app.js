@@ -38,6 +38,7 @@ if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
   console.error("❌ Missing FIREBASE_SERVICE_ACCOUNT_JSON env var");
   process.exit(1);
 }
+
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
 admin.initializeApp({
@@ -92,7 +93,7 @@ app.post("/api/violation/send", async (req, res) => {
 });
 
 // ===============================
-// ✅ جلب المخالفات (بدون Index)
+// ✅ جلب المخالفات (بدون orderBy عشان ما يطلب Index)
 // ===============================
 app.get("/api/violations", requireAuth, async (req, res) => {
   try {
@@ -110,9 +111,8 @@ app.get("/api/violations", requireAuth, async (req, res) => {
 });
 
 // ===============================
-// ✅ قبول/رفض = نقطة + حذف
-// ✅ تحديث في users/{uid} (فيها email + points + accept + reject)
-// ✅ مهم: لا ينشئ وثيقة جديدة. لازم users/{uid} موجودة مسبقًا.
+// ✅ قبول/رفض = تحديث users/{uid} + حذف المخالفة
+// الحقول: email, accept, reject, points
 // ===============================
 app.post("/api/violation/:type", requireAuth, async (req, res) => {
   try {
@@ -135,26 +135,37 @@ app.post("/api/violation/:type", requireAuth, async (req, res) => {
       const vSnap = await t.get(violationRef);
       if (!vSnap.exists) throw new Error("مخالفة غير موجودة");
 
-      // 2) ✅ تأكد المستخدم موجود في users (بدون إنشاء جديد)
+      // 2) ✅ إذا وثيقة المستخدم غير موجودة، أنشئ “ملف بيانات”
       const uSnap = await t.get(userRef);
-      if (!uSnap.exists) throw new Error("حساب المشرف غير موجود في users");
+      if (!uSnap.exists) {
+        t.set(
+          userRef,
+          { email, accept: 0, reject: 0, points: 0 },
+          { merge: true }
+        );
+      }
 
-      // 3) تحديث نقاط + عداد قبول/رفض
+      // 3) تحديث النقاط والعداد
       const update =
         type === "accept"
           ? {
               accept: admin.firestore.FieldValue.increment(1),
               points: admin.firestore.FieldValue.increment(1),
-              lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
             }
           : {
               reject: admin.firestore.FieldValue.increment(1),
               points: admin.firestore.FieldValue.increment(1),
-              lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
             };
 
-      // نخلي الإيميل يتحدث (اختياري)
-      t.update(userRef, { email, ...update });
+      t.set(
+        userRef,
+        {
+          email,
+          ...update,
+          lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
 
       // 4) حذف المخالفة
       t.delete(violationRef);
