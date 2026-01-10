@@ -104,11 +104,11 @@ app.post("/api/violation/send", async (req, res) => {
 // ===============================
 app.get("/api/violations", requireAuth, async (req, res) => {
   try {
-    const snap = await db
-      .collection("violations")
-      .where("status", "==", "pending")
-      .orderBy("createdAt", "desc")
-      .get();
+const snap = await db
+  .collection("violations")
+  .where("status", "==", "pending")
+  .get();
+
 
     const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     res.json(data);
