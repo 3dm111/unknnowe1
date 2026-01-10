@@ -7,11 +7,7 @@ let ID_TOKEN = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   const container = document.getElementById("violations");
-
-  if (!container) {
-    console.error("❌ عنصر violations غير موجود في الصفحة");
-    return;
-  }
+  if (!container) return;
 
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
@@ -20,6 +16,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     ID_TOKEN = await user.getIdToken(true);
+
+    // ✅ اختبار سريع يثبت إن التوكن شغال
+    const me = await fetch(`${API_BASE}/api/me`, {
+      headers: { Authorization: `Bearer ${ID_TOKEN}` },
+    });
+    console.log("ME STATUS:", me.status, await me.text());
+
     loadViolations(container);
   });
 });
@@ -30,13 +33,15 @@ async function loadViolations(container) {
       headers: { Authorization: `Bearer ${ID_TOKEN}` },
     });
 
-    const text = await res.text();
+    const txt = await res.text();
+    console.log("VIOLATIONS STATUS:", res.status, txt);
+
     if (!res.ok) {
-      container.innerHTML = `<p>فشل تحميل المخالفات: ${text}</p>`;
+      container.innerHTML = `<p>فشل تحميل المخالفات: ${txt}</p>`;
       return;
     }
 
-    const data = JSON.parse(text);
+    const data = JSON.parse(txt);
     container.innerHTML = "";
 
     if (!data || data.length === 0) {
@@ -50,7 +55,7 @@ async function loadViolations(container) {
 
       const img = document.createElement("img");
       const base64 = v.imageBase64 || "";
-      if (base64.length > 0) img.src = `data:image/png;base64,${base64}`;
+      if (base64) img.src = `data:image/png;base64,${base64}`;
       else img.style.display = "none";
 
       const title = document.createElement("h3");
@@ -75,11 +80,10 @@ async function loadViolations(container) {
       card.appendChild(img);
       card.appendChild(title);
       card.appendChild(actions);
-
       container.appendChild(card);
     });
-  } catch (err) {
-    console.error("❌ خطأ في جلب المخالفات:", err);
+  } catch (e) {
+    console.error(e);
     container.innerHTML = "<p>فشل تحميل المخالفات</p>";
   }
 }
@@ -87,8 +91,6 @@ async function loadViolations(container) {
 async function updateStatus(id, type) {
   try {
     if (!ID_TOKEN) return alert("التوكن غير جاهز");
-    if (!id) return alert("ID المخالفة فاضي");
-
     const res = await fetch(`${API_BASE}/api/violation/${type}`, {
       method: "POST",
       headers: {
@@ -98,14 +100,14 @@ async function updateStatus(id, type) {
       body: JSON.stringify({ id }),
     });
 
-    const text = await res.text();
-    console.log("STATUS:", res.status, "RESP:", text);
+    const txt = await res.text();
+    console.log("DECIDE STATUS:", res.status, txt);
 
-    if (!res.ok) return alert("فشل: " + text);
+    if (!res.ok) return alert("فشل: " + txt);
 
     location.reload();
-  } catch (err) {
-    console.error("❌ خطأ في تحديث المخالفة:", err);
-    alert("صار خطأ بالشبكة");
+  } catch (e) {
+    console.error(e);
+    alert("خطأ بالشبكة");
   }
 }

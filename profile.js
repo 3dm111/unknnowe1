@@ -1,18 +1,13 @@
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const emailEl  = document.getElementById("email");
   const acceptEl = document.getElementById("accept");
   const rejectEl = document.getElementById("reject");
   const pointsEl = document.getElementById("points");
-
-  // ✅ لو ما لقى العناصر راح يطبع غلط واضح
-  if (!acceptEl || !rejectEl || !pointsEl) {
-    console.error("❌ IDs غلط في HTML. لازم: accept/reject/points");
-    return;
-  }
+  const backBtn  = document.getElementById("backBtn");
 
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
@@ -22,22 +17,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (emailEl) emailEl.textContent = user.email;
 
-    // ✅ نقرأ من users/{uid}
     const ref = doc(db, "users", user.uid);
-    const snap = await getDoc(ref);
 
-    if (!snap.exists()) {
-      // لو ما فيه وثيقة users فهذا يفسر ليه النقاط 0
-      console.error("❌ ما فيه وثيقة للمستخدم داخل users بهذا uid:", user.uid);
-      acceptEl.textContent = "0";
-      rejectEl.textContent = "0";
-      pointsEl.textContent = "0";
-      return;
-    }
+    // ✅ ضمان وجود حقول (بيانات فقط)
+    await setDoc(ref, { email: user.email, accept: 0, reject: 0, points: 0 }, { merge: true });
 
-    const d = snap.data() || {};
-    acceptEl.textContent = String(d.accept ?? 0);
-    rejectEl.textContent = String(d.reject ?? 0);
-    pointsEl.textContent = String(d.points ?? 0);
+    onSnapshot(ref, (snap) => {
+      const d = snap.data() || {};
+      console.log("PROFILE SNAP:", d);
+
+      if (acceptEl) acceptEl.textContent = String(d.accept ?? 0);
+      if (rejectEl) rejectEl.textContent = String(d.reject ?? 0);
+      if (pointsEl) pointsEl.textContent = String(d.points ?? 0);
+    });
   });
+
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      window.location.href = "dashboard.html";
+    });
+  }
 });

@@ -55,7 +55,9 @@ async function requireAuth(req, res, next) {
     const header = req.headers.authorization || "";
     const token = header.startsWith("Bearer ") ? header.slice(7) : null;
 
-    if (!token) return res.status(401).json({ success: false, message: "Missing token" });
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Missing token" });
+    }
 
     const decoded = await admin.auth().verifyIdToken(token);
     req.user = decoded; // { uid, email, ... }
@@ -65,6 +67,27 @@ async function requireAuth(req, res, next) {
     return res.status(401).json({ success: false, message: "Invalid token" });
   }
 }
+
+// ===============================
+// ✅ Debug endpoint: يوريك بياناتك في users
+// ===============================
+app.get("/api/me", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user.uid;
+    const ref = db.collection("users").doc(uid);
+    const snap = await ref.get();
+
+    res.json({
+      uid,
+      emailFromToken: req.user.email || null,
+      usersDocExists: snap.exists,
+      usersDocData: snap.exists ? snap.data() : null,
+    });
+  } catch (e) {
+    console.error("ME ERROR:", e);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
 
 // ===============================
 // ✅ إرسال مخالفة -> Firestore
@@ -85,6 +108,7 @@ app.post("/api/violation/send", async (req, res) => {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+    console.log("🚨 SEND =>", { id: docRef.id, playerId, violation });
     res.json({ success: true, id: docRef.id });
   } catch (e) {
     console.error("SEND ERROR:", e);
@@ -112,11 +136,11 @@ app.get("/api/violations", requireAuth, async (req, res) => {
 
 // ===============================
 // ✅ قبول/رفض = تحديث users/{uid} + حذف المخالفة
-// الحقول: email, accept, reject, points
+// ✅ fields: email, accept, reject, points
 // ===============================
 app.post("/api/violation/:type", requireAuth, async (req, res) => {
   try {
-    const { type } = req.params; // accept | reject
+    const { type } = req.params;
     const { id } = req.body;
 
     if (!id) return res.status(400).json({ success: false, message: "Missing violation id" });
@@ -130,36 +154,41 @@ app.post("/api/violation/:type", requireAuth, async (req, res) => {
     const violationRef = db.collection("violations").doc(String(id));
     const userRef = db.collection("users").doc(uid);
 
- await db.runTransaction(async (t) => {
-  const vSnap = await t.get(violationRef);
-  if (!vSnap.exists) throw new Error("مخالفة غير موجودة");
+    await db.runTransaction(async (t) => {
+      const vSnap = await t.get(violationRef);
+      if (!vSnap.exists) throw new Error("مخالفة غير موجودة");
 
-  const update =
-    type === "accept"
-      ? {
-          accept: admin.firestore.FieldValue.increment(1),
+      // ✅ ضمان وثيقة المستخدم موجودة (بيانات فقط)
+      t.set(
+        userRef,
+        { email, accept: 0, reject: 0, points: 0 },
+        { merge: true }
+      );
+
+      const inc =
+        type === "accept"
+          ? { accept: admin.firestore.FieldValue.increment(1) }
+          : { reject: admin.firestore.FieldValue.increment(1) };
+
+      t.set(
+        userRef,
+        {
+          email,
           points: admin.firestore.FieldValue.increment(1),
-        }
-      : {
-          reject: admin.firestore.FieldValue.increment(1),
-          points: admin.firestore.FieldValue.increment(1),
-        };
+          ...inc,
+          lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
 
-  // ✅ هذا يكتب/يحدث بدون ما يطيح حتى لو الوثيقة جديدة
-  t.set(
-    userRef,
-    {
-      email,
-      accept: 0,
-      reject: 0,
-      points: 0,
-      ...update,
-      lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
-    },
-    { merge: true }
-  );
+      t.delete(violationRef);
+    });
 
-  t.delete(violationRef);
+    res.json({ success: true, result: type });
+  } catch (e) {
+    console.error("DECIDE ERROR:", e);
+    res.status(500).json({ success: false, message: e.message });
+  }
 });
 
 // صفحات
