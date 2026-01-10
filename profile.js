@@ -17,18 +17,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (emailEl) emailEl.textContent = user.email;
 
-    const ref = doc(db, "admins", user.uid);
+    // ✅ هنا التغيير: users بدل admins
+    const ref = doc(db, "users", user.uid);
     const snap = await getDoc(ref);
 
+    // ✅ إذا الوثيقة غير موجودة: ننشئها (مرة واحدة) وفيها ايميل + نقاط
     if (!snap.exists()) {
-      await setDoc(ref, { accept: 0, reject: 0, points: 0 });
+      await setDoc(ref, {
+        email: user.email,
+        accept: 0,
+        reject: 0,
+        points: 0
+      });
+
       if (acceptEl) acceptEl.textContent = "0";
       if (rejectEl) rejectEl.textContent = "0";
       if (pointsEl) pointsEl.textContent = "0";
       return;
     }
 
+    // ✅ عرض البيانات
     const d = snap.data();
+
+    // (اختياري) تحديث الايميل إذا تغير
+    if (d.email !== user.email) {
+      await setDoc(ref, { email: user.email }, { merge: true });
+    }
+
     if (acceptEl) acceptEl.textContent = String(d.accept ?? 0);
     if (rejectEl) rejectEl.textContent = String(d.reject ?? 0);
     if (pointsEl) pointsEl.textContent = String(d.points ?? 0);

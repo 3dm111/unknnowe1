@@ -38,7 +38,6 @@ if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
   console.error("❌ Missing FIREBASE_SERVICE_ACCOUNT_JSON env var");
   process.exit(1);
 }
-
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
 admin.initializeApp({
@@ -67,7 +66,7 @@ async function requireAuth(req, res, next) {
 }
 
 // ===============================
-// ✅ إرسال مخالفة (Unity/Web) -> Firestore
+// ✅ إرسال مخالفة -> Firestore
 // ===============================
 app.post("/api/violation/send", async (req, res) => {
   try {
@@ -85,13 +84,6 @@ app.post("/api/violation/send", async (req, res) => {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    console.log("🚨 SEND =>", {
-      id: docRef.id,
-      playerId,
-      violation,
-      imgLen: (imageBase64 || "").length,
-    });
-
     res.json({ success: true, id: docRef.id });
   } catch (e) {
     console.error("SEND ERROR:", e);
@@ -100,15 +92,14 @@ app.post("/api/violation/send", async (req, res) => {
 });
 
 // ===============================
-// ✅ جلب المخالفات (لازم مشرف مسجل دخول)
+// ✅ جلب المخالفات (بدون Index)
 // ===============================
 app.get("/api/violations", requireAuth, async (req, res) => {
   try {
-const snap = await db
-  .collection("violations")
-  .where("status", "==", "pending")
-  .get();
-
+    const snap = await db
+      .collection("violations")
+      .where("status", "==", "pending")
+      .get();
 
     const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     res.json(data);
@@ -119,8 +110,9 @@ const snap = await db
 });
 
 // ===============================
-// ✅ قبول/رفض = نقطة + حذف المخالفة
-// تحديث النقاط في admins/{uid} بنفس حقول موقعك: accept/reject/points
+// ✅ قبول/رفض = نقطة + حذف
+// ✅ تحديث في users/{uid} (فيها email + points + accept + reject)
+// ✅ مهم: لا ينشئ وثيقة جديدة. لازم users/{uid} موجودة مسبقًا.
 // ===============================
 app.post("/api/violation/:type", requireAuth, async (req, res) => {
   try {
@@ -132,42 +124,39 @@ app.post("/api/violation/:type", requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid type" });
     }
 
-    const adminUid = req.user.uid;
+    const uid = req.user.uid;
+    const email = req.user.email || null;
 
     const violationRef = db.collection("violations").doc(String(id));
-    const adminRef = db.collection("admins").doc(adminUid);
+    const userRef = db.collection("users").doc(uid);
 
     await db.runTransaction(async (t) => {
+      // 1) تأكد المخالفة موجودة
       const vSnap = await t.get(violationRef);
       if (!vSnap.exists) throw new Error("مخالفة غير موجودة");
 
-      // ✅ ضمان وجود وثيقة الأدمن
-      t.set(adminRef, { accept: 0, reject: 0, points: 0 }, { merge: true });
+      // 2) ✅ تأكد المستخدم موجود في users (بدون إنشاء جديد)
+      const uSnap = await t.get(userRef);
+      if (!uSnap.exists) throw new Error("حساب المشرف غير موجود في users");
 
-      // ✅ قرار: قبول أو رفض (كلهم +1 نقطة حسب كلامك)
-      if (type === "accept") {
-        t.set(
-          adminRef,
-          {
-            accept: admin.firestore.FieldValue.increment(1),
-            points: admin.firestore.FieldValue.increment(1),
-            lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
-          },
-          { merge: true }
-        );
-      } else {
-        t.set(
-          adminRef,
-          {
-            reject: admin.firestore.FieldValue.increment(1),
-            points: admin.firestore.FieldValue.increment(1),
-            lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
-          },
-          { merge: true }
-        );
-      }
+      // 3) تحديث نقاط + عداد قبول/رفض
+      const update =
+        type === "accept"
+          ? {
+              accept: admin.firestore.FieldValue.increment(1),
+              points: admin.firestore.FieldValue.increment(1),
+              lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
+            }
+          : {
+              reject: admin.firestore.FieldValue.increment(1),
+              points: admin.firestore.FieldValue.increment(1),
+              lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
 
-      // ✅ حذف المخالفة بعد احتساب النقطة
+      // نخلي الإيميل يتحدث (اختياري)
+      t.update(userRef, { email, ...update });
+
+      // 4) حذف المخالفة
       t.delete(violationRef);
     });
 
@@ -178,13 +167,10 @@ app.post("/api/violation/:type", requireAuth, async (req, res) => {
   }
 });
 
-// ===============================
 // صفحات
-// ===============================
 app.get("/dashboard", (req, res) => {
   res.sendFile(path.join(__dirname, "dashboard.html"));
 });
-
 app.get("/violations", (req, res) => {
   res.sendFile(path.join(__dirname, "violations.html"));
 });
