@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (emailEl) emailEl.textContent = user.email;
-
+    if (acceptEl) acceptEl.textContent = user.accept;
     const ref = doc(db, "users", user.uid);
 
     // ✅ ضمان وجود حقول (بيانات فقط)
