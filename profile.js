@@ -4,8 +4,8 @@ import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/
 
 document.addEventListener("DOMContentLoaded", () => {
   const emailEl  = document.getElementById("email");
-  const acceptEl = document.getElementById("accept");
-  const rejectEl = document.getElementById("reject");
+  const acceptEl = document.getElementById("acceptCount");
+  const rejectEl = document.getElementById("rejectCount");
   const pointsEl = document.getElementById("points");
   const backBtn  = document.getElementById("backBtn");
 

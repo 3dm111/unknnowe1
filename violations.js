@@ -1,12 +1,13 @@
 const API_BASE = "https://unknnowe1.onrender.com";
 
 import { auth } from "./firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 let ID_TOKEN = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   const container = document.getElementById("violations");
+
   if (!container) {
     console.error("❌ عنصر violations غير موجود في الصفحة");
     return;
@@ -29,6 +30,12 @@ async function loadViolations(container) {
       headers: { Authorization: `Bearer ${ID_TOKEN}` },
     });
 
+    if (!res.ok) {
+      const t = await res.text();
+      container.innerHTML = `<p>فشل تحميل المخالفات: ${t}</p>`;
+      return;
+    }
+
     const data = await res.json();
     container.innerHTML = "";
 
@@ -43,8 +50,11 @@ async function loadViolations(container) {
 
       const img = document.createElement("img");
       const base64 = v.imageBase64 || v.image || "";
-      if (base64 && base64.length > 0) img.src = `data:image/png;base64,${base64}`;
-      else img.style.display = "none";
+      if (base64 && base64.length > 0) {
+        img.src = `data:image/png;base64,${base64}`;
+      } else {
+        img.style.display = "none";
+      }
 
       const title = document.createElement("h3");
       title.textContent = v.violation || "مخالفة بدون اسم";
@@ -96,7 +106,10 @@ async function updateStatus(id, type) {
     console.log("STATUS:", res.status);
     console.log("RESPONSE:", text);
 
-    if (!res.ok) return alert("فشل: " + text);
+    if (!res.ok) {
+      alert("فشل: " + text);
+      return;
+    }
 
     location.reload();
   } catch (err) {
