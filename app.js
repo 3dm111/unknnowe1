@@ -130,52 +130,36 @@ app.post("/api/violation/:type", requireAuth, async (req, res) => {
     const violationRef = db.collection("violations").doc(String(id));
     const userRef = db.collection("users").doc(uid);
 
-    await db.runTransaction(async (t) => {
-      // 1) تأكد المخالفة موجودة
-      const vSnap = await t.get(violationRef);
-      if (!vSnap.exists) throw new Error("مخالفة غير موجودة");
+ await db.runTransaction(async (t) => {
+  const vSnap = await t.get(violationRef);
+  if (!vSnap.exists) throw new Error("مخالفة غير موجودة");
 
-      // 2) ✅ إذا وثيقة المستخدم غير موجودة، أنشئ “ملف بيانات”
-      const uSnap = await t.get(userRef);
-      if (!uSnap.exists) {
-        t.set(
-          userRef,
-          { email, accept: 0, reject: 0, points: 0 },
-          { merge: true }
-        );
-      }
+  const update =
+    type === "accept"
+      ? {
+          accept: admin.firestore.FieldValue.increment(1),
+          points: admin.firestore.FieldValue.increment(1),
+        }
+      : {
+          reject: admin.firestore.FieldValue.increment(1),
+          points: admin.firestore.FieldValue.increment(1),
+        };
 
-      // 3) تحديث النقاط والعداد
-      const update =
-        type === "accept"
-          ? {
-              accept: admin.firestore.FieldValue.increment(1),
-              points: admin.firestore.FieldValue.increment(1),
-            }
-          : {
-              reject: admin.firestore.FieldValue.increment(1),
-              points: admin.firestore.FieldValue.increment(1),
-            };
+  // ✅ هذا يكتب/يحدث بدون ما يطيح حتى لو الوثيقة جديدة
+  t.set(
+    userRef,
+    {
+      email,
+      accept: 0,
+      reject: 0,
+      points: 0,
+      ...update,
+      lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
 
-      t.set(
-        userRef,
-        {
-          email,
-          ...update,
-          lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-      // 4) حذف المخالفة
-      t.delete(violationRef);
-    });
-
-    res.json({ success: true, result: type });
-  } catch (e) {
-    console.error("DECIDE ERROR:", e);
-    res.status(500).json({ success: false, message: e.message });
-  }
+  t.delete(violationRef);
 });
 
 // صفحات
