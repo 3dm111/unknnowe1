@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const emailEl  = document.getElementById("email");
@@ -17,36 +17,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (emailEl) emailEl.textContent = user.email;
 
-    // ✅ هنا التغيير: users بدل admins
+    // ✅ users بدل admins
     const ref = doc(db, "users", user.uid);
-    const snap = await getDoc(ref);
 
-    // ✅ إذا الوثيقة غير موجودة: ننشئها (مرة واحدة) وفيها ايميل + نقاط
-    if (!snap.exists()) {
-      await setDoc(ref, {
-        email: user.email,
-        accept: 0,
-        reject: 0,
-        points: 0
-      });
+    // ✅ أنشئ الوثيقة مرة واحدة لو ما كانت موجودة
+    await setDoc(ref, {
+      email: user.email,
+      accept: 0,
+      reject: 0,
+      points: 0
+    }, { merge: true });
 
-      if (acceptEl) acceptEl.textContent = "0";
-      if (rejectEl) rejectEl.textContent = "0";
-      if (pointsEl) pointsEl.textContent = "0";
-      return;
-    }
+    // ✅ قراءة لحظية + طباعة للتأكد
+    onSnapshot(ref, (snap) => {
+      const d = snap.data() || {};
+      console.log("USER DOC:", d);
 
-    // ✅ عرض البيانات
-    const d = snap.data();
-
-    // (اختياري) تحديث الايميل إذا تغير
-    if (d.email !== user.email) {
-      await setDoc(ref, { email: user.email }, { merge: true });
-    }
-
-    if (acceptEl) acceptEl.textContent = String(d.accept ?? 0);
-    if (rejectEl) rejectEl.textContent = String(d.reject ?? 0);
-    if (pointsEl) pointsEl.textContent = String(d.points ?? 0);
+      if (acceptEl) acceptEl.textContent = String(d.accept ?? 0);
+      if (rejectEl) rejectEl.textContent = String(d.reject ?? 0);
+      if (pointsEl) pointsEl.textContent = String(d.points ?? 0);
+    });
   });
 
   if (backBtn) {
