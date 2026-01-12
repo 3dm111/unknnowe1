@@ -23,8 +23,8 @@ app.use((req, res, next) => {
 // ===============================
 // ✅ Body parsing
 // ===============================
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(express.json({ limit: "5000mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5000mb" }));
 
 // ===============================
 // ✅ Static site
@@ -115,6 +115,38 @@ app.post("/api/violation/send", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
+app.post("/api/violation/send-batch", async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: "items required" });
+    }
+
+    // Batch write لتخفيف الضغط
+    const batch = db.batch();
+    const col = db.collection("violations");
+
+    items.slice(0, 20).forEach((it) => { // حد أقصى 20 لكل طلب
+      const ref = col.doc();
+      batch.set(ref, {
+        playerId: it.playerId || "UNKNOWN",
+        violation: it.violation || "UNKNOWN",
+        imageBase64: it.imageBase64 || "",
+        status: "pending",
+        clientTimeMs: it.clientTimeMs || null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
+    res.json({ success: true, count: Math.min(items.length, 20) });
+  } catch (e) {
+    console.error("BATCH SEND ERROR:", e);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 
 // ===============================
 // ✅ جلب المخالفات (بدون orderBy عشان ما يطلب Index)
