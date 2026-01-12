@@ -21,7 +21,7 @@ app.use((req, res, next) => {
 });
 
 // ===============================
-// ✅ Body parsing (خفّضناها عشان ما ينهار السيرفر)
+// ✅ Body parsing (لا ترفعها 5000mb)
 // ===============================
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -38,7 +38,6 @@ if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
   console.error("❌ Missing FIREBASE_SERVICE_ACCOUNT_JSON env var");
   process.exit(1);
 }
-
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
 admin.initializeApp({
@@ -60,7 +59,7 @@ async function requireAuth(req, res, next) {
     }
 
     const decoded = await admin.auth().verifyIdToken(token);
-    req.user = decoded; // { uid, email, ... }
+    req.user = decoded;
     next();
   } catch (e) {
     console.error("AUTH ERROR:", e);
@@ -74,14 +73,7 @@ async function requireAuth(req, res, next) {
 app.get("/api/health", (req, res) => res.status(200).send("OK"));
 
 // ===============================
-// ✅ Limits: 5 مخالفات لكل 12 ساعة لكل لاعب
-// ===============================
-const WINDOW_HOURS = 12;
-const MAX_VIOLATIONS = 5;
-const WINDOW_MS = WINDOW_HOURS * 60 * 60 * 1000;
-
-// ===============================
-// ✅ Debug endpoint: يوريك بياناتك في users
+// ✅ Debug endpoint: يوريك بياناتك في users (للأدمن فقط)
 // ===============================
 app.get("/api/me", requireAuth, async (req, res) => {
   try {
@@ -102,85 +94,27 @@ app.get("/api/me", requireAuth, async (req, res) => {
 });
 
 // ===============================
-// ✅ إرسال مخالفة (محمية + Limit per UID)
-// body: { violation, imageBase64? }
+// ✅ إرسال مخالفة -> Firestore (بدون Auth عشان Unity يشتغل)
+// body: { playerId, violation, imageBase64? }
 // ===============================
-app.post("/api/violation/send", requireAuth, async (req, res) => {
+app.post("/api/violation/send", async (req, res) => {
   try {
-    const { violation, imageBase64 } = req.body;
+    const { playerId, violation, imageBase64 } = req.body;
 
-    if (!violation) {
+    if (!playerId || !violation) {
       return res.status(400).json({ success: false, message: "بيانات ناقصة" });
     }
 
-    const playerId = req.user.uid; // ✅ فريد لكل لاعب
-    const limitRef = db.collection("violation_limits").doc(playerId);
-    const violationsCol = db.collection("violations");
-
-    const result = await db.runTransaction(async (t) => {
-      const now = Date.now();
-      const limSnap = await t.get(limitRef);
-
-      let windowStartMs = now;
-      let count = 0;
-
-      if (limSnap.exists) {
-        const d = limSnap.data() || {};
-        windowStartMs = typeof d.windowStartMs === "number" ? d.windowStartMs : now;
-        count = typeof d.count === "number" ? d.count : 0;
-
-        // ✅ لو انتهت نافذة 12 ساعة
-        if (now - windowStartMs >= WINDOW_MS) {
-          windowStartMs = now;
-          count = 0;
-        }
-      }
-
-      // ✅ قفل لو وصل الحد
-      if (count >= MAX_VIOLATIONS) {
-        return {
-          allowed: false,
-          remaining: 0,
-          resetInMs: (windowStartMs + WINDOW_MS) - now,
-        };
-      }
-
-      // ✅ مسموح
-      count += 1;
-      t.set(limitRef, { windowStartMs, count }, { merge: true });
-
-      const docRef = violationsCol.doc();
-      t.set(docRef, {
-        playerId,
-        violation,
-        imageBase64: imageBase64 || "",
-        status: "pending",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      return {
-        allowed: true,
-        id: docRef.id,
-        remaining: MAX_VIOLATIONS - count,
-        resetInMs: (windowStartMs + WINDOW_MS) - now,
-      };
+    const docRef = await db.collection("violations").add({
+      playerId,
+      violation,
+      imageBase64: imageBase64 || "",
+      status: "pending",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    if (!result.allowed) {
-      return res.status(429).json({
-        success: false,
-        message: `تم الوصول للحد: ${MAX_VIOLATIONS} مخالفات خلال ${WINDOW_HOURS} ساعة`,
-        remaining: result.remaining,
-        resetInMs: result.resetInMs,
-      });
-    }
-
-    res.json({
-      success: true,
-      id: result.id,
-      remaining: result.remaining,
-      resetInMs: result.resetInMs,
-    });
+    console.log("🚨 SEND =>", { id: docRef.id, playerId, violation });
+    res.json({ success: true, id: docRef.id });
   } catch (e) {
     console.error("SEND ERROR:", e);
     res.status(500).json({ success: false, message: e.message });
@@ -188,96 +122,33 @@ app.post("/api/violation/send", requireAuth, async (req, res) => {
 });
 
 // ===============================
-// ✅ إرسال Batch (محمية + لا تتجاوز حد 5/12h)
-// body: { items: [{violation, imageBase64?, clientTimeMs?}, ...] }
-// - يقبل فقط اللي يسمح به قبل ما يكمل 5
+// ✅ Batch send (بدون Auth)
+// body: { items: [{playerId, violation, imageBase64?, clientTimeMs?}, ...] }
 // ===============================
-app.post("/api/violation/send-batch", requireAuth, async (req, res) => {
+app.post("/api/violation/send-batch", async (req, res) => {
   try {
     const { items } = req.body;
-
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "items required" });
     }
 
-    const playerId = req.user.uid;
-    const limitRef = db.collection("violation_limits").doc(playerId);
-    const violationsCol = db.collection("violations");
+    const batch = db.batch();
+    const col = db.collection("violations");
 
-    const result = await db.runTransaction(async (t) => {
-      const now = Date.now();
-      const limSnap = await t.get(limitRef);
-
-      let windowStartMs = now;
-      let count = 0;
-
-      if (limSnap.exists) {
-        const d = limSnap.data() || {};
-        windowStartMs = typeof d.windowStartMs === "number" ? d.windowStartMs : now;
-        count = typeof d.count === "number" ? d.count : 0;
-
-        if (now - windowStartMs >= WINDOW_MS) {
-          windowStartMs = now;
-          count = 0;
-        }
-      }
-
-      const remaining = Math.max(0, MAX_VIOLATIONS - count);
-      if (remaining <= 0) {
-        return {
-          allowedCount: 0,
-          remaining: 0,
-          resetInMs: (windowStartMs + WINDOW_MS) - now,
-        };
-      }
-
-      // ✅ ما نقبل أكثر من المتاح + سقف 20
-      const acceptN = Math.min(remaining, items.length, 20);
-      const acceptItems = items.slice(0, acceptN);
-
-      // ✅ احفظ المخالفات المقبولة
-      acceptItems.forEach((it) => {
-        const vName = (it?.violation || "").trim();
-        if (!vName) return;
-
-        const docRef = violationsCol.doc();
-        t.set(docRef, {
-          playerId,
-          violation: vName,
-          imageBase64: it?.imageBase64 || "",
-          status: "pending",
-          clientTimeMs: it?.clientTimeMs || null,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+    items.slice(0, 20).forEach((it) => {
+      const ref = col.doc();
+      batch.set(ref, {
+        playerId: it.playerId || "UNKNOWN",
+        violation: it.violation || "UNKNOWN",
+        imageBase64: it.imageBase64 || "",
+        status: "pending",
+        clientTimeMs: it.clientTimeMs || null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-
-      // ✅ حدّث العداد
-      const newCount = count + acceptN;
-      t.set(limitRef, { windowStartMs, count: newCount }, { merge: true });
-
-      return {
-        allowedCount: acceptN,
-        remaining: Math.max(0, MAX_VIOLATIONS - newCount),
-        resetInMs: (windowStartMs + WINDOW_MS) - now,
-      };
     });
 
-    if (result.allowedCount <= 0) {
-      return res.status(429).json({
-        success: false,
-        message: `تم الوصول للحد: ${MAX_VIOLATIONS} مخالفات خلال ${WINDOW_HOURS} ساعة`,
-        remaining: result.remaining,
-        resetInMs: result.resetInMs,
-        accepted: 0,
-      });
-    }
-
-    res.json({
-      success: true,
-      accepted: result.allowedCount,
-      remaining: result.remaining,
-      resetInMs: result.resetInMs,
-    });
+    await batch.commit();
+    res.json({ success: true, count: Math.min(items.length, 20) });
   } catch (e) {
     console.error("BATCH SEND ERROR:", e);
     res.status(500).json({ success: false, message: e.message });
@@ -285,7 +156,7 @@ app.post("/api/violation/send-batch", requireAuth, async (req, res) => {
 });
 
 // ===============================
-// ✅ جلب المخالفات (pending فقط)
+// ✅ جلب المخالفات (للأدمن فقط)
 // ===============================
 app.get("/api/violations", requireAuth, async (req, res) => {
   try {
@@ -303,8 +174,7 @@ app.get("/api/violations", requireAuth, async (req, res) => {
 });
 
 // ===============================
-// ✅ قبول/رفض = تحديث users/{uid} + حذف المخالفة
-// fields: email, acceptCount, rejectCount, points
+// ✅ قبول/رفض (للأدمن) + عدادات صحيحة
 // ===============================
 app.post("/api/violation/:type", requireAuth, async (req, res) => {
   try {
@@ -328,7 +198,6 @@ app.post("/api/violation/:type", requireAuth, async (req, res) => {
 
       const uSnap = await t.get(userRef);
 
-      // ✅ أول مرة فقط: إنشاء الحقول
       if (!uSnap.exists) {
         t.set(userRef, { email, acceptCount: 0, rejectCount: 0, points: 0 }, { merge: true });
       } else {
@@ -340,7 +209,6 @@ app.post("/api/violation/:type", requireAuth, async (req, res) => {
           ? { acceptCount: admin.firestore.FieldValue.increment(1) }
           : { rejectCount: admin.firestore.FieldValue.increment(1) };
 
-      // ✅ نقاط عند القبول فقط
       const pointsInc =
         type === "accept"
           ? admin.firestore.FieldValue.increment(1)
@@ -356,7 +224,6 @@ app.post("/api/violation/:type", requireAuth, async (req, res) => {
         { merge: true }
       );
 
-      // ✅ حذف المخالفة من قائمة pending
       t.delete(violationRef);
     });
 
