@@ -155,41 +155,43 @@ app.post("/api/violation/:type", requireAuth, async (req, res) => {
     const userRef = db.collection("users").doc(uid);
 
     await db.runTransaction(async (t) => {
-      const vSnap = await t.get(violationRef);
-      if (!vSnap.exists) throw new Error("مخالفة غير موجودة");
+  const vSnap = await t.get(violationRef);
+  if (!vSnap.exists) throw new Error("مخالفة غير موجودة");
 
-      // ✅ ضمان وثيقة المستخدم موجودة بنفس أسماء حقولك
-      t.set(
-        userRef,
-        { email, acceptCount: 0, rejectCount: 0, points: 0 },
-        { merge: true }
-      );
+  const uSnap = await t.get(userRef);
 
-      // ✅ زيادة العداد الصحيح
-      const inc =
-        type === "accept"
-          ? { acceptCount: admin.firestore.FieldValue.increment(1) }
-          : { rejectCount: admin.firestore.FieldValue.increment(1) };
+  // ✅ صفّر فقط إذا أول مرة ينشأ المستخدم
+  if (!uSnap.exists) {
+    t.set(userRef, { email, acceptCount: 0, rejectCount: 0, points: 0 }, { merge: true });
+  } else {
+    // ✅ إذا موجود لا تصفّر، حدث الإيميل فقط (اختياري)
+    t.set(userRef, { email }, { merge: true });
+  }
 
-      // ✅ (اختياري) النقاط: خليها تزيد عند القبول فقط
-      const pointsInc =
-        type === "accept"
-          ? admin.firestore.FieldValue.increment(1)
-          : admin.firestore.FieldValue.increment(0);
+  const inc =
+    type === "accept"
+      ? { acceptCount: admin.firestore.FieldValue.increment(1) }
+      : { rejectCount: admin.firestore.FieldValue.increment(1) };
 
-      t.set(
-        userRef,
-        {
-          email,
-          points: pointsInc,
-          ...inc,
-          lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+  // ✅ النقاط تزيد عند القبول فقط (عدّلها لو تبي غير كذا)
+  const pointsInc =
+    type === "accept"
+      ? admin.firestore.FieldValue.increment(1)
+      : admin.firestore.FieldValue.increment(0);
 
-      t.delete(violationRef);
-    });
+  t.set(
+    userRef,
+    {
+      ...inc,
+      points: pointsInc,
+      lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  t.delete(violationRef);
+});
+
 
     res.json({ success: true, result: type });
   } catch (e) {
