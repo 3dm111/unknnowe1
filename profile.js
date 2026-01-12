@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const emailEl  = document.getElementById("email");
@@ -9,36 +9,71 @@ document.addEventListener("DOMContentLoaded", () => {
   const pointsEl = document.getElementById("points");
   const backBtn  = document.getElementById("backBtn");
 
+  // زر الرجوع
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      window.location.href = "dashboard.html";
+    });
+  }
+
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
       window.location.href = "index.html";
       return;
     }
 
-    if (emailEl) emailEl.textContent = user.email;
+    // الإيميل من Auth
+    if (emailEl) emailEl.textContent = user.email || "";
 
-    // ✅ مرجع بيانات المستخدم داخل Firestore
-    const ref = doc(db, "users", user.uid);
+    // بيانات من Firestore
+    const userRef = doc(db, "users", user.uid);
 
-    // ✅ تأكد الوثيقة موجودة وفيها الحقول الأساسية (مرة واحدة)
-    await setDoc(
-      ref,
-      { email: user.email, accept: 0, reject: 0, points: 0 },
-      { merge: true }
-    );
+    try {
+      const snap = await getDoc(userRef);
 
-    // ✅ قراءة لحظية من Firebase
-    onSnapshot(ref, (snap) => {
-      const d = snap.data() || {};
-      if (acceptEl) acceptEl.textContent = String(d.accept ?? 0);
-      if (rejectEl) rejectEl.textContent = String(d.reject ?? 0);
-      if (pointsEl) pointsEl.textContent = String(d.points ?? 0);
-    });
+      if (!snap.exists()) {
+        console.warn("⚠️ لا توجد وثيقة للمستخدم داخل users بهذا UID:", user.uid);
+        // عرض أصفار بدل ما يعلق
+        if (acceptEl) acceptEl.textContent = "0";
+        if (rejectEl) rejectEl.textContent = "0";
+        if (pointsEl) pointsEl.textContent = "0";
+        return;
+      }
+
+      const data = snap.data();
+      console.log("✅ بيانات المستخدم من Firestore:", data);
+
+      // ✅ النقاط (يدعم أكثر من اسم لو كنت مستخدم اسم مختلف)
+      const points =
+        (typeof data.points === "number" ? data.points : null) ??
+        (typeof data.point === "number" ? data.point : null) ??
+        (typeof data.Points === "number" ? data.Points : null) ??
+        0;
+
+      const acceptCount =
+        (typeof data.acceptCount === "number" ? data.acceptCount : null) ??
+        (typeof data.accept === "number" ? data.accept : null) ??
+        0;
+
+      const rejectCount =
+        (typeof data.rejectCount === "number" ? data.rejectCount : null) ??
+        (typeof data.reject === "number" ? data.reject : null) ??
+        0;
+
+      if (acceptEl) acceptEl.textContent = String(acceptCount);
+      if (rejectEl) rejectEl.textContent = String(rejectCount);
+      if (pointsEl) pointsEl.textContent = String(points);
+
+      // تحذير لو الاسم غلط
+      if (data.points === undefined && data.point === undefined && data.Points === undefined) {
+        console.warn("⚠️ ما لقيت حقل نقاط. لازم يكون اسمه points (Number) داخل users/{uid}");
+      }
+
+    } catch (e) {
+      console.error("❌ خطأ قراءة Firestore:", e);
+      if (acceptEl) acceptEl.textContent = "0";
+      if (rejectEl) rejectEl.textContent = "0";
+      if (pointsEl) pointsEl.textContent = "0";
+    }
   });
-
-  if (backBtn) {
-    backBtn.addEventListener("click", () => {
-      window.location.href = "dashboard.html";
-    });
-  }
 });
