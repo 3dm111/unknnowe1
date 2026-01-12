@@ -67,12 +67,12 @@ async function loadViolations(container) {
       const acceptBtn = document.createElement("button");
       acceptBtn.className = "accept";
       acceptBtn.textContent = "قبول";
-      acceptBtn.onclick = () => updateStatus(v.id, "accept");
+      acceptBtn.onclick = () => updateStatus(v.id, "acceptCount");
 
       const rejectBtn = document.createElement("button");
       rejectBtn.className = "reject";
       rejectBtn.textContent = "رفض";
-      rejectBtn.onclick = () => updateStatus(v.id, "reject");
+      rejectBtn.onclick = () => updateStatus(v.id, "rejectCount");
 
       actions.appendChild(acceptBtn);
       actions.appendChild(rejectBtn);
