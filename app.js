@@ -158,23 +158,30 @@ app.post("/api/violation/:type", requireAuth, async (req, res) => {
       const vSnap = await t.get(violationRef);
       if (!vSnap.exists) throw new Error("مخالفة غير موجودة");
 
-      // ✅ ضمان وثيقة المستخدم موجودة (بيانات فقط)
+      // ✅ ضمان وثيقة المستخدم موجودة بنفس أسماء حقولك
       t.set(
         userRef,
-        { email, accept: 0, reject: 0, points: 0 },
+        { email, acceptCount: 0, rejectCount: 0, points: 0 },
         { merge: true }
       );
 
+      // ✅ زيادة العداد الصحيح
       const inc =
         type === "accept"
-          ? { accept: admin.firestore.FieldValue.increment(1) }
-          : { reject: admin.firestore.FieldValue.increment(1) };
+          ? { acceptCount: admin.firestore.FieldValue.increment(1) }
+          : { rejectCount: admin.firestore.FieldValue.increment(1) };
+
+      // ✅ (اختياري) النقاط: خليها تزيد عند القبول فقط
+      const pointsInc =
+        type === "accept"
+          ? admin.firestore.FieldValue.increment(1)
+          : admin.firestore.FieldValue.increment(0);
 
       t.set(
         userRef,
         {
           email,
-          points: admin.firestore.FieldValue.increment(1),
+          points: pointsInc,
           ...inc,
           lastActionAt: admin.firestore.FieldValue.serverTimestamp(),
         },
@@ -190,6 +197,7 @@ app.post("/api/violation/:type", requireAuth, async (req, res) => {
     res.status(500).json({ success: false, message: e.message });
   }
 });
+
 
 // صفحات
 app.get("/dashboard", (req, res) => {
